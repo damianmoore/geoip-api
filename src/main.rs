@@ -1,6 +1,6 @@
 use axum::{
     extract::{Path, Request},
-    http::{HeaderMap, StatusCode},
+    http::StatusCode,
     middleware::{self, Next},
     response::{Json, Response},
     routing::get,
@@ -137,6 +137,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .merge(
             Router::new()
                 .route("/{ip}", get(lookup_ip))
+                .with_state(database.clone())
                 .layer(middleware::from_fn(validate_host))
         )
         .with_state(database);
