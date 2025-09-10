@@ -23,7 +23,7 @@ COPY src ./src
 RUN cargo build --release
 
 # Runtime stage - using alpine for small size
-FROM alpine:3.19
+FROM alpine:3.22
 
 # Install ca-certificates for HTTPS requests
 RUN apk add --no-cache ca-certificates

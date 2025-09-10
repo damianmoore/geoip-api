@@ -1,7 +1,14 @@
-use axum::{extract::Path, http::StatusCode, response::Json, routing::get, Router};
+use axum::{
+    extract::{Path, Request},
+    http::{HeaderMap, StatusCode},
+    middleware::{self, Next},
+    response::{Json, Response},
+    routing::get,
+    Router,
+};
 use clap::Parser;
 use serde::{Deserialize, Serialize};
-use std::{net::SocketAddr, sync::Arc};
+use std::{env, net::SocketAddr, sync::Arc};
 use tokio::signal;
 use tracing::info;
 
@@ -17,7 +24,7 @@ use downloader::DatabaseDownloader;
 struct Args {
     #[arg(long, default_value = "0.0.0.0:80")]
     bind: SocketAddr,
-    
+
     #[arg(long, default_value = "/data")]
     data_dir: String,
 }
@@ -35,6 +42,50 @@ struct GeoLocation {
 }
 
 type SharedDatabase = Arc<tokio::sync::RwLock<Option<GeoDatabase>>>;
+
+fn get_allowed_hosts() -> Vec<String> {
+    let default_hosts = "localhost,127.0.0.1";
+    let allowed_hosts = env::var("ALLOWED_HOSTS").unwrap_or_else(|_| default_hosts.to_string());
+    allowed_hosts
+        .split(',')
+        .map(|s| s.trim().to_lowercase())
+        .collect()
+}
+
+fn is_host_allowed(host: &str, allowed_hosts: &[String]) -> bool {
+    let host = host.to_lowercase();
+
+    for allowed in allowed_hosts {
+        if allowed.starts_with('*') {
+            let suffix = &allowed[1..];
+            if host.ends_with(suffix) {
+                return true;
+            }
+        } else if host == *allowed {
+            return true;
+        }
+    }
+    false
+}
+
+async fn validate_host(
+    request: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    let allowed_hosts = get_allowed_hosts();
+
+    if let Some(host_header) = request.headers().get("host") {
+        if let Ok(host_str) = host_header.to_str() {
+            let host = host_str.split(':').next().unwrap_or(host_str);
+
+            if is_host_allowed(host, &allowed_hosts) {
+                return Ok(next.run(request).await);
+            }
+        }
+    }
+
+    Err(StatusCode::FORBIDDEN)
+}
 
 async fn lookup_ip(
     Path(ip): Path<String>,
@@ -60,7 +111,7 @@ async fn health() -> Json<serde_json::Value> {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     eprintln!("GeoIP API starting...");
     eprintln!("Args: {:?}", std::env::args().collect::<Vec<_>>());
-    
+
     // Initialize tracing with environment filter
     tracing_subscriber::fmt()
         .with_env_filter(
@@ -68,22 +119,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info"))
         )
         .init();
-    
+
     let args = Args::parse();
     info!("Starting GeoIP API server on {}", args.bind);
-    
+
     let database = Arc::new(tokio::sync::RwLock::new(None::<GeoDatabase>));
-    
+
     let db_clone = Arc::clone(&database);
     let data_dir = args.data_dir.clone();
     tokio::spawn(async move {
         let mut downloader = DatabaseDownloader::new(&data_dir);
         downloader.start_background_updates(db_clone).await;
     });
-    
+
     let app = Router::new()
         .route("/health", get(health))
         .route("/{ip}", get(lookup_ip))
+        .layer(middleware::from_fn(validate_host))
         .with_state(database);
 
     let listener = match tokio::net::TcpListener::bind(&args.bind).await {
@@ -94,7 +146,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
     info!("Server listening on {}", args.bind);
-    
+
     if let Err(e) = axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
         .await
@@ -102,7 +154,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         eprintln!("Server error: {}", e);
         std::process::exit(1);
     }
-    
+
     Ok(())
 }
 

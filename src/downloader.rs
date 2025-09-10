@@ -168,7 +168,7 @@ impl DatabaseDownloader {
         // Create new symlink to temp location
         #[cfg(unix)]
         std::os::unix::fs::symlink(filename, &temp_symlink)?;
-        
+
         #[cfg(windows)]
         std::os::windows::fs::symlink_file(filename, &temp_symlink)?;
 
@@ -187,7 +187,7 @@ impl DatabaseDownloader {
 
         info!("Loading database from: {:?}", latest_path);
         let new_db = GeoDatabase::new(&latest_path)?;
-        
+
         let mut db_guard = database.write().await;
         *db_guard = Some(new_db);
         info!("Database loaded successfully");
@@ -202,7 +202,7 @@ impl DatabaseDownloader {
         for entry in entries {
             let entry = entry?;
             let path = entry.path();
-            
+
             if let Some(filename) = path.file_name().and_then(|n| n.to_str()) {
                 if filename.starts_with("dbip-city-lite-") && filename.ends_with(".mmdb") {
                     let metadata = entry.metadata()?;

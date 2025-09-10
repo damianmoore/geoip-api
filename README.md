@@ -17,7 +17,7 @@ A lightweight, self-hosted REST API service that provides city-level geolocation
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/geoip-api.git
+git clone https://github.com/damianmoore/geoip-api.git
 cd geoip-api
 
 # Build and run
@@ -58,6 +58,7 @@ curl http://localhost/health
 ### Environment Variables
 
 - `DATA_DIR`: Directory for database storage (default: `/data`)
+- `ALLOWED_HOSTS`: Comma-separated list of allowed Host headers (default: `localhost,127.0.0.1`)
 
 ### Command Line Options
 
@@ -124,9 +125,11 @@ make build
 version: '3.8'
 services:
   geoip-api:
-    image: your-username/geoip-api:latest
+    image: damianmoore/geoip-api:latest
     ports:
       - "80:80"
+    environment:
+      - ALLOWED_HOSTS=localhost,127.0.0.1
     volumes:
       - geoip-data:/data
     restart: unless-stopped
@@ -159,9 +162,12 @@ spec:
     spec:
       containers:
       - name: geoip-api
-        image: your-username/geoip-api:latest
+        image: damianmoore/geoip-api:latest
         ports:
         - containerPort: 80
+        env:
+        - name: ALLOWED_HOSTS
+          value: "*.svc.cluster.local,localhost,127.0.0.1"
         volumeMounts:
         - name: data
           mountPath: /data
