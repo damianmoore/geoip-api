@@ -134,8 +134,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let app = Router::new()
         .route("/health", get(health))
-        .route("/{ip}", get(lookup_ip))
-        .layer(middleware::from_fn(validate_host))
+        .merge(
+            Router::new()
+                .route("/{ip}", get(lookup_ip))
+                .layer(middleware::from_fn(validate_host))
+        )
         .with_state(database);
 
     let listener = match tokio::net::TcpListener::bind(&args.bind).await {

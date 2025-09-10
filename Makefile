@@ -4,7 +4,7 @@
 VERSION := $(shell grep '^version' Cargo.toml | head -n1 | cut -d '"' -f2)
 IMAGE_NAME := geoip-api
 REGISTRY ?= docker.io
-REPO_NAME ?= $(USER)/$(IMAGE_NAME)
+REPO_NAME ?= damianmoore/$(IMAGE_NAME)
 FULL_IMAGE := $(REGISTRY)/$(REPO_NAME):$(VERSION)
 LATEST_IMAGE := $(REGISTRY)/$(REPO_NAME):latest
 

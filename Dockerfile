@@ -40,6 +40,9 @@ COPY --from=builder /usr/src/app/target/release/geoip-api /usr/local/bin/geoip-a
 # Switch to non-root user
 USER appuser
 
+# Set logging level for tracing
+ENV RUST_LOG=info
+
 # Expose port 80
 EXPOSE 80
 
