@@ -52,6 +52,10 @@ fn get_allowed_hosts() -> Vec<String> {
         .collect()
 }
 
+fn get_api_key() -> Option<String> {
+    env::var("API_KEY").ok()
+}
+
 fn is_host_allowed(host: &str, allowed_hosts: &[String]) -> bool {
     let host = host.to_lowercase();
 
@@ -85,6 +89,51 @@ async fn validate_host(
     }
 
     Err(StatusCode::FORBIDDEN)
+}
+
+async fn validate_api_key(
+    request: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    let api_key = match get_api_key() {
+        Some(key) => key,
+        None => return Ok(next.run(request).await),
+    };
+
+    let provided_key = extract_api_key_from_request(&request);
+
+    match provided_key {
+        Some(key) if key == api_key => Ok(next.run(request).await),
+        _ => Err(StatusCode::UNAUTHORIZED),
+    }
+}
+
+fn extract_api_key_from_request(request: &Request) -> Option<String> {
+    if let Some(auth_header) = request.headers().get("authorization") {
+        if let Ok(auth_str) = auth_header.to_str() {
+            if let Some(token) = auth_str.strip_prefix("Bearer ") {
+                return Some(token.to_string());
+            }
+        }
+    }
+
+    if let Some(api_key_header) = request.headers().get("x-api-key") {
+        if let Ok(key) = api_key_header.to_str() {
+            return Some(key.to_string());
+        }
+    }
+
+    if let Some(query) = request.uri().query() {
+        for param in query.split('&') {
+            if let Some((key, value)) = param.split_once('=') {
+                if key == "api_key" {
+                    return Some(value.to_string());
+                }
+            }
+        }
+    }
+
+    None
 }
 
 async fn lookup_ip(
@@ -138,6 +187,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Router::new()
                 .route("/{ip}", get(lookup_ip))
                 .with_state(database.clone())
+                .layer(middleware::from_fn(validate_api_key))
                 .layer(middleware::from_fn(validate_host))
         )
         .with_state(database);

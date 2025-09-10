@@ -30,8 +30,17 @@ make docker-run
 ### Lookup IP Address
 
 ```bash
-# Basic lookup
+# Basic lookup (when API_KEY not set)
 curl http://localhost/8.8.8.8
+
+# With API key using Bearer token (recommended)
+curl -H "Authorization: Bearer YOUR_API_KEY" http://localhost/8.8.8.8
+
+# With API key using X-API-Key header
+curl -H "X-API-Key: YOUR_API_KEY" http://localhost/8.8.8.8
+
+# With API key using query parameter (less secure)
+curl http://localhost/8.8.8.8?api_key=YOUR_API_KEY
 
 # Response
 {
@@ -59,6 +68,7 @@ curl http://localhost/health
 
 - `DATA_DIR`: Directory for database storage (default: `/data`)
 - `ALLOWED_HOSTS`: Comma-separated list of allowed Host headers (default: `localhost,127.0.0.1`)
+- `API_KEY`: Optional API key for authentication. If not set, API endpoints remain open
 
 ### Command Line Options
 
@@ -130,6 +140,7 @@ services:
       - "80:80"
     environment:
       - ALLOWED_HOSTS=localhost,127.0.0.1
+      - API_KEY=your_secure_api_key_here  # Optional: enables authentication
     volumes:
       - geoip-data:/data
     restart: unless-stopped
@@ -168,6 +179,11 @@ spec:
         env:
         - name: ALLOWED_HOSTS
           value: "*.svc.cluster.local,localhost,127.0.0.1"
+        - name: API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: geoip-api-secret
+              key: api-key
         volumeMounts:
         - name: data
           mountPath: /data
