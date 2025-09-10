@@ -1,0 +1,25 @@
+# Rust
+target/
+Cargo.lock
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data
+data/
+*.mmdb
+*.mmdb.gz
+
+# Docker
+.docker/
+
+# Logs
+*.log
