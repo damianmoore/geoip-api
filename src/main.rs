@@ -33,8 +33,11 @@ struct Args {
 struct GeoLocation {
     ip: String,
     city: Option<String>,
+    subdivision: Option<String>,
     country: Option<String>,
     country_code: Option<String>,
+    continent: Option<String>,
+    continent_code: Option<String>,
     latitude: Option<f64>,
     longitude: Option<f64>,
     timezone: Option<String>,

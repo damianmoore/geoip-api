@@ -38,6 +38,7 @@ docker-run: ## Run Docker container with volume mount (foreground, auto-remove)
 		--name geoip-api-$(VERSION) \
 		-p 3000:80 \
 		-v geoip-data:/data \
+		-e RUST_LOG=debug \
 		$(FULL_IMAGE)
 
 docker-run-dev: ## Run Docker container in foreground for development
